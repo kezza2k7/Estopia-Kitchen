@@ -1,0 +1,77 @@
+<!-- index.ejs -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barcode Scanner</title>
+    <style>
+        #overlay {
+            position: absolute;
+            border: 2px solid red;
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<video id="cameraFeed" width="640" height="480" autoplay></video>
+<div id="overlay"></div>
+
+<script src="https://cdn.rawgit.com/serratus/quaggaJS/master/dist/quagga.min.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(function (stream) {
+                var video = document.getElementById('cameraFeed');
+                video.srcObject = stream;
+
+                Quagga.init({
+                    inputStream: {
+                        name: "Live",
+                        type: "LiveStream",
+                        target: video,
+                        constraints: {
+                            width: { min: 640 },
+                            height: { min: 480 },
+                            aspectRatio: { min: 1, max: 2 },
+                            facingMode: "environment",
+                        },
+                    },
+                    decoder: {
+                        readers: ["code_128_reader", "ean_reader", "upc_reader", "code_39_reader", "code_39_vin_reader", "codabar_reader", "i2of5_reader", "2of5_reader", "code_93_reader"] // Include all barcode readers supported by Quagga.js
+                    },
+                    locate: true,
+                    locator: {
+                        patchSize: "medium",
+                    },
+                    numOfWorkers: 6,
+                    frequency: 20,
+                }, function (err) {
+                    if (err) {
+                        console.error('Error initializing Quagga:', err);
+                        return;
+                    }
+
+                    Quagga.start();
+                });
+
+                Quagga.onDetected(function (result) {
+                    var code = result.codeResult.code;
+
+                    // Add your logic for handling the detected barcode
+                    console.log('Detected barcode:', code);
+
+                    // Update the DOM or perform additional actions if needed
+                });
+            })
+            .catch(function (error) {
+                console.error('Error accessing camera:', error);
+            });
+    });
+</script>
+
+</body>
+</html>

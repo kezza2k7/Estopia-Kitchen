@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings</title>
+   <style>
+    body {
+        background: linear-gradient(to right, lightblue, lightpink);
+        font-family: "Protest Riot", sans-serif;
+    }
+
+    @media (min-width: 601px) {
+        #breakElement1,
+        #breakElement2 {
+            display: none;
+        }
+    }
+   </style>
+    <!-- Include Vue.js -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <!-- Include Axios for HTTP requests -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <div style="display: flex; align-items: center; justify-content: space-between; text-align: left;">
+            <a href="/home" style="padding: 10px 10px; background-color: transparent; color: #fff; border: none; border-radius: 4px; cursor: pointer; text-decoration: none;">
+                <i class="fas fa-cog" style="margin-right: 5px;"></i>Back</a>
+            <h1 id="section0" style="font-family: Arial, sans-serif; color: #333; text-align: center; margin: 0 auto;">Settings Management</h1>
+        </div>        
+
+        <div style="text-align: center;">
+        <label for="kitchenSelect">Choose a kitchen:</label>
+        <select style="padding: 10px 20px; background-color: #c44aed; color: #fff; border: none; border-radius: 4px; cursor: pointer;" id="kitchenSelect" v-model="selectedKitchen" @change="updateKitchen">
+            <option v-for="kitchen in kitchens" :value="kitchen.id">{{ kitchen.name }}</option>
+        </select><br><br>
+        <button style="padding: 10px 20px; background-color: #ec4188; color: #fff; border: none; border-radius: 4px; cursor: pointer;" @click="createNewKitchen">Create New</button>
+        <button style="padding: 10px 20px; background-color: #4a73ed; color: #fff; border: none; border-radius: 4px; cursor: pointer;" @click="copyJoinUrl">Copy Join URL - Owner Only</button><br><br>
+        <button style="padding: 10px 20px; background-color: #c44aed; color: #fff; border: none; border-radius: 4px; cursor: pointer;" @click="leaveordelete">Leave / Delete Kitchen</button>
+        <button style="padding: 10px 20px; background-color: #51833d; color: #fff; border: none; border-radius: 4px; cursor: pointer;" @click="editkitchenname">Edit Kitchen Name</button>    
+        </div>
+    </div>
+    <script>
+        // Function to scroll to a section when a button is clicked
+        function scrollToSection(sectionId) {
+            var section = document.getElementById(sectionId);
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+        new Vue({
+            el: '#app',
+            data: {
+                sessionid: '',
+                kitchenid: '',
+                selectedKitchen: '',
+                kitchens: [],
+                userid: '',
+            },
+            async mounted() {
+                const kitchenid = localStorage.getItem('kitchenid');
+                const sessionId = localStorage.getItem('sessionid');
+                this.kitchenid = kitchenid
+                this.selectedKitchen = kitchenid
+
+                if(!sessionId){
+                    window.location.href = '/login';
+                    return
+                }
+
+                this.sessionid = sessionId
+
+                if(!kitchenid){
+                    await this.requestfirstkitchen(sessionId)
+                }
+
+                await this.checksessionid(sessionId)
+                await this.fetchKitchens();
+                this.fetchItems()
+            },
+            methods: {
+                    async editkitchenname() {
+                        const newKitchenName = window.prompt("Change the name of the Kitchen to:");
+
+                        if  (newKitchenName) {
+                        // Handle the creation of the new kitchen here
+                        console.log("Kitchen Name Changed to:", newKitchenName);
+                        await axios.put('/api/updatekitchen', {sessionid: this.sessionid, kitchenname: newKitchenName, kitchenid: this.kitchenid})
+                        .then(response => {
+                            console.log(response.data)
+                            this.fetchKitchens()
+                        })
+                        .catch(error => {
+                            if(error.response.data.error === "Validation error"){
+                                console.error('Validation error');
+                            } else {
+                                console.error('Error fetching kitchens:', error);
+                            }
+                            
+                        });
+                        } 
+                    },
+                    async createNewKitchen() {
+                    // Prompt the user for text input
+                    const newKitchenName = window.prompt("Enter the name of the new kitchen:");
+
+                    // Check if the user entered a value
+                    if (newKitchenName) {
+                        // Handle the creation of the new kitchen here
+                        console.log("New kitchen name:", newKitchenName);
+                        await axios.put('/api/makekitchen', {sessionid: this.sessionid, kitchenname: newKitchenName})
+                        .then(response => {
+                            console.log(response.data)
+                            localStorage.setItem('kitchenid', response.data[1].kitchen_id);     
+                            this.kitchenid = response.data[1].kitchen_id
+                            this.fetchKitchens()
+                        })
+                        .catch(error => {
+                            if(error.response.data.error === "Validation error"){
+                                console.error('Validation error');
+                            } else {
+                                console.error('Error fetching kitchens:', error);
+                            }
+                            
+                        });
+                    } else {
+                        // Handle the case where the user canceled the input
+                        console.log("Input canceled");
+                    }
+                },
+                async fetchKitchens() {
+                    axios.put('/api/getkitchens', {sessionid: this.sessionid})
+                        .then(async response => {
+                            console.log(response.data)
+                            this.kitchens = response.data;
+                        })
+                        .catch(error => {
+                            console.error('Error fetching kitchens:', error);
+                        });
+                },
+                updateKitchen() {
+                    // Update kitchenid based on selectedKitchen value
+                    this.kitchenid = this.selectedKitchen;
+                    localStorage.setItem('kitchenid', this.selectedKitchen); 
+                    this.fetchItems()
+                },
+                async requestfirstkitchen() {
+                    try {
+                        const response = await axios.put(`/api/requestfirstkitchen/`, {sessionid: this.sessionId});
+                        if (response.data) {
+                            console.log(`response: ${response.data}`);   
+                            localStorage.setItem('kitchenid', response.data);     
+                            this.kitchenid = response.data
+                            await this.fetchKitchens()
+                        } else {
+                            window.location.href = '/home';
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                },
+                async checksessionid(id) {
+                    try {
+                        const response = await axios.post(`/api/checksession`, {id})
+                        if (response.data){
+                            console.log(`Logged in as ${response.data.username}`) 
+                            this.userid = response.data.id
+                            this.sessionId = id                   
+                        } else {
+                            console.log(`Not Logged in`)
+                            window.location.href = '/login';
+                        }
+                    } catch(e){
+                        console.error(e)
+                    }
+                },
+                async leaveordelete() {
+                        if (window.confirm(`Are you sure you want to delete or leave?`)) {
+                        response = await axios.post(`/api/leaveordel`, {sessionid: this.sessionid, kitchenid: this.kitchenid})
+                        // Generate a join URL based on the selected kitchen's ID
+                        await this.fetchKitchens()
+                        await this.requestfirstkitchen()
+                        
+                    }
+                },
+                async copyJoinUrl() {
+                    if (this.kitchenid) {
+                        response = await axios.post(`/api/createurl`, {sessionid: this.sessionid, kitchenid: this.kitchenid})
+                        // Generate a join URL based on the selected kitchen's ID
+                        this.joinUrl = response.data.inviteLink;
+                        
+                        // Copy the URL to the clipboard
+                        this.copyToClipboard(this.joinUrl);
+                        
+                        // Optionally, provide feedback to the user (e.g., display a success message)
+                        alert('Join URL copied to clipboard!');
+                    }
+                },
+                copyToClipboard(text) {
+                    // Create a temporary input element and set its value to the text
+                    const tempInput = document.createElement('input');
+                    tempInput.value = text;
+                    
+                    // Append the input element to the DOM
+                    document.body.appendChild(tempInput);
+                    
+                    // Select the text in the input element
+                    tempInput.select();
+                    
+                    // Execute the "copy" command to copy the selected text to the clipboard
+                    document.execCommand('copy');
+                    
+                    // Remove the temporary input element from the DOM
+                    document.body.removeChild(tempInput);
+                },
+                async fetchItems() {
+                    console.log(`Fetching Hi`)
+                },
+            }
+        });
+        </script>
+</body>
+</html>

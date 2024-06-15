@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+    <!-- Include Vue.js -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <!-- Include Axios for HTTP requests -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: "Protest Riot", sans-serif;
+        }
+
+        #app {
+            text-align: center;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>Login</h1>
+        <form>
+            <label for="username">Username:</label>
+            <input type="text" id="username" v-model="username" required><br><br>
+
+            <label for="password">Password:</label>
+            <input type="password" id="password" v-model="password" required><br><br>
+
+            <button type="button" @click="register()">Register</button>
+            <button type="button" @click="login()">Login</button>
+            <div v-if="errorMessage" style="color: red;">{{ errorMessage }}</div>
+        </form>
+    </div>
+
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                username: '',
+                password: '',
+                errorMessage: ''
+            },
+            methods: {
+                async login() {
+                    try {
+                        const response = await axios.post('/api/login', {
+                            username: this.username,
+                            password: this.password
+                        });
+                        // Save sessionid to localStorage or Vuex for future requests
+                        localStorage.setItem('sessionid', response.data.sessionid);
+                        // Redirect or perform desired action upon successful login
+                        console.log('Login successful');
+                        window.location.href = '/home'; // Redirect to /home
+                    } catch (error) {
+                        if (error.response.status === 401) {
+                            this.errorMessage = 'Invalid username or password';
+                        } else {
+                            if (error.response.status === 404) {
+                                this.errorMessage = 'Input a username and password';
+                            } else {
+                                this.errorMessage = 'An error occurred';
+                            }
+                        }
+                        console.error(error);
+                    }
+                },
+                async register() {
+                    try {
+                        const response = await axios.post('/api/register', {
+                            username: this.username,
+                            password: this.password
+                        });
+                        // Save sessionid to localStorage or Vuex for future requests
+                        localStorage.setItem('sessionid', response.data.sessionid);
+                        // Redirect or perform desired action upon successful login
+                        console.log('Login successful');
+                        window.location.href = '/home'; // Redirect to /home
+                    } catch (error) {
+                        if (error.response.status === 404) {
+                                this.errorMessage = 'Input a username and password';
+                            } else {
+                                this.errorMessage = 'Username in use';
+                            }
+                        console.error(error);
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

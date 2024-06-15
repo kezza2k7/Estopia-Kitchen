@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Item Management</title>
+   <style>
+    body {
+        background: linear-gradient(to right, lightblue, lightpink);
+        font-family: "Protest Riot", sans-serif;
+    }
+
+    @media (min-width: 601px) {
+        #breakElement1,
+        #breakElement2 {
+            display: none;
+        }
+    }
+    
+    ul.cool {
+        list-style: none;
+        padding: 0;
+    }
+
+    li {
+        padding-top: 15px;
+        display: flex;
+        justify-content: center; /* Center items horizontally */
+        width: 100%;
+    }
+
+    .item-container {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+        justify-content: center; /* Distribute items evenly horizontally */
+    }
+
+    .item-input {
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background-color: #efc8f7;
+    }
+
+    .buttons {
+        display: flex;
+    }
+
+    @media only screen and (min-width: 900px) {
+        .item-container {
+            flex-direction: unset;
+            width: 100%;
+        }
+    }
+
+    /* CSS for modal and overlay */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black overlay */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999; /* Ensure modal is above other content */
+    }
+
+    .modal {
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        max-width: 80%;
+        max-height: 80%;
+        overflow: auto;
+    }
+
+    .close {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        cursor: pointer;
+        font-size: 20px;
+        color: #333;
+    }
+
+   </style>
+    <!-- Include Vue.js -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <!-- Include Axios for HTTP requests -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha384-GLhlTQ8iUNnJTmP0+ukxl9ZB8Fq8a4QomLAfN2l3Lg77qvy4V07k1jX2P5U2nMb" crossorigin="anonymous">
+</head>
+<body>
+    <div id="app">
+        <!-- Modal for displaying extra details -->
+        <div v-if="selectedItem" class="modal-overlay">
+            <div class="modal">
+                <span class="close" @click="hideDetails">&times;</span>
+                <h2>Details for {{ selectedItem.name }}</h2>
+                <p>Location: {{ selectedItem.location }}</p>
+                <template v-if="selectedItem.expiryDate">
+                <p>Expiry Date: {{ selectedItem.expiryDate }}</p>
+                </template>
+                <template v-if="selectedItem.brand">
+                    <p>Brand: {{ selectedItem.brand }}</p>
+                </template>
+                <template v-if="selectedItem.shop">
+                    <p>Shop: {{ selectedItem.shop }}</p>
+                </template>
+                <template v-if="selectedItem.novagroup">
+                    <p>Nova Group: {{ selectedItem.novagroup }}</p>
+                </template>
+                <template v-if="selectedItem.ingredients">
+                    <p>Ingredients: {{ selectedItem.ingredients }}</p>
+                </template>
+                <template v-if="selectedItem.carbs">
+                    <p>Carbs: {{ selectedItem.carbs }}</p>
+                </template>
+                <template v-if="selectedItem.energy ">
+                    <p>Energy: {{ selectedItem.energy  }}</p>
+                </template>
+                <template v-if="selectedItem.fat">
+                    <p>Fat: {{ selectedItem.fat }}</p>
+                </template>
+                <template v-if="selectedItem.satfat">
+                    <p>Saturated Fat: {{ selectedItem.satfat }}</p>
+                </template>
+                <template v-if="selectedItem.fiber">
+                    <p>Fiber: {{ selectedItem.fiber }}</p>
+                </template>
+                <template v-if="selectedItem.salt">
+                    <p>Salt: {{ selectedItem.salt }}</p>
+                </template>
+                <template v-if="selectedItem.proteins">
+                    <p>Proteins: {{ selectedItem.proteins }}</p>
+                </template>
+                <template v-if="selectedItem.sodium">
+                    <p>Sodium: {{ selectedItem.sodium }}</p>
+                </template>
+                <template v-if="selectedItem.sugars">
+                    <p>Sugars: {{ selectedItem.sugars }}</p>
+                </template>
+                <img v-if="selectedItem.image" :src="selectedItem.image" alt="Item Image" style="max-width: 100px;"></p>
+            </div>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; text-align: left;">
+            <a href="/settings" style="padding: 10px 10px; background-color: transparent; color: #fff; border: none; border-radius: 4px; cursor: pointer; text-decoration: none;">
+                <i class="fas fa-cog" style="margin-right: 5px;"></i>⚙️</a>
+            <h1 id="section0" style="font-family: Arial, sans-serif; color: #333; text-align: center; margin: 0 auto;">Item Management</h1>
+        </div>        
+
+        <div style="text-align: center;">
+        <label for="kitchenSelect">Choose a kitchen:</label>
+        <select style="padding: 10px 20px; background-color: #c44aed; color: #fff; border: none; border-radius: 4px; cursor: pointer;" id="kitchenSelect" v-model="selectedKitchen" @change="updateKitchen">
+            <option v-for="kitchen in kitchens" :value="kitchen.id">{{ kitchen.name }}</option>
+        </select><br><br>
+        </div>
+
+        <!-- Form to create a new item -->
+        <form @submit.prevent="createItem" style="font-family: Arial, sans-serif; margin-left: 37px;">
+            <label for="Barcodeid">Barcode ID:</label><br>
+            <input type="text" id="barcodeid" v-model="newItem.barcodeid" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 90%; text-align: center; background-color: #efc8f7;"><br><br>
+            
+            <label for="name">Name:</label><br>
+            <input type="text" id="name" v-model="newItem.name" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 90%; text-align: center; background-color: #efc8f7;"><br><br>
+    
+            <label for="location">Location:</label><br>
+            <input type="text" id="location" v-model="newItem.location" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 90%; text-align: center; background-color: #efc8f7;"><br><br>
+    
+            <label for="expiryDate">Expiry Date:</label><br>
+            <input type="date" id="expiryDate" v-model="newItem.expiryDate" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 90%; text-align: center; background-color: #efc8f7;"><br><br>
+    
+            <button type="submit" style="padding: 10px 20px; background-color: #c44aed; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Create Item</button>
+        </form>
+        <div id="quick-links" style="font-family: Arial, sans-serif; color: #333; text-align: center; padding: 15px; border: 5px; border-radius: 4px solid #ccc;">
+            <button href="#section1" onclick="scrollToSection('section1')" style="padding: 10px 20px; background-color: #ec4188; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Expiring Items</button>
+            <button href="#section2" onclick="scrollToSection('section2')" style="padding: 10px 20px; background-color: #4a73ed; color: #fff; border: none; border-radius: 4px; cursor: pointer;">All Items</button><br><br>
+            <button href="#section3" onclick="scrollToSection('section3')" style="padding: 10px 20px; background-color: #c44aed; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Shopping List</button> <br><br><br>
+            <a href="/cal" style="padding: 10px 20px; background-color: #4a73ed; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Calender</a>
+        </div>    
+        <h2 id="section1" style="font-family: Arial, sans-serif; color: #333;">Close to Expire Items -></h2>
+        <ul class="cool">
+            <li v-for="item in expireitems" style="padding-top: 15px; list-style: none; text-align: center;" :key="item.id">
+                <div class="item-container">
+                <input type="text" v-model="item.name" @input="updateItem(item)" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; background-color: #efc8f7;">
+                <input type="text" v-model="item.location" @input="updateItem(item)" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; background-color: #efc8f7;"> 
+                <input type="date" v-model="item.expiryDate" @input="updateItem(item)" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; background-color: #efc8f7;">  <br>
+                <button style="padding: 10px 20px; background-color: #4a73ed; color: #fff; border: none; border-radius: 4px; cursor: pointer;" @click="deleteItem(item)">Delete</button>
+                <button style="padding: 10px 20px; background-color: #c44aed; color: #fff; border: none; border-radius: 4px; cursor: pointer;" @click="addShopItem(item)">Add to Shopping List</button>
+                <button style="padding: 10px 20px; background-color: #f0ad4e; color: #fff; border: none; border-radius: 4px; cursor: pointer;" @click="showDetails(item)">Details</button>
+                </div>
+            </li>
+        </ul>
+        <br>
+        <h2 id="section2"style="font-family: Arial, sans-serif; color: #333;">All Items -></h2>
+        <!-- Display list of items -->
+        <!-- Search input -->
+        <input type="text" v-model="searchQuery" @input="fetchItems" placeholder="Search items..." style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-left: 37px; background-color: #efc8f7;"><br><br>
+        <ul class="cool">
+            <li v-for="item in items" style="padding-top: 15px; list-style: none; text-align: center;" :key="item.id">
+                <div class="item-container">
+                <input type="text" v-model="item.name" @input="updateItem(item)" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; background-color: #efc8f7;">
+                <input type="text" v-model="item.location" @input="updateItem(item)" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; background-color: #efc8f7;">
+                <input type="date" v-model="item.expiryDate" @input="updateItem(item)" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; background-color: #efc8f7;"> <br>
+                <button style="padding: 10px 20px; background-color: #4a73ed; color: #fff; border: none; border-radius: 4px; cursor: pointer;" @click="deleteItem(item)">Delete</button>
+                <button style="padding: 10px 20px; background-color: #c44aed; color: #fff; border: none; border-radius: 4px; cursor: pointer;" @click="addShopItem(item)">Add to Shopping List</button>
+                <button style="padding: 10px 20px; background-color: #f0ad4e; color: #fff; border: none; border-radius: 4px; cursor: pointer;" @click="showDetails(item)">Details</button>
+                </div>
+            </li>
+        </ul><br>
+        <div style="text-align: center;">
+        <button href="#section0" onclick="scrollToSection('section0')" style="padding: 10px 20px; background-color: #ec4188; color: #fff; border: none; border-radius: 4px; cursor: pointer; ">Back to Top</button><br><br>
+        </div>
+        <h2 id="section3"style="font-family: Arial, sans-serif; color: #333;">Shopping List -></h2>
+        <!-- Display list of items -->
+        <!-- Search input -->
+        <form @submit.prevent="createShopItem" style="font-family: Arial, sans-serif; margin-left: 37px;">
+           <label for="Shopname">Name:</label><br>
+            <input type="text" id="name" v-model="newShopItem.name" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 90%; text-align: center; background-color: #efc8f7;"><br><br>
+    
+            <button type="submit" style="padding: 10px 20px; background-color: #c44aed; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Add to Shopping List</button>
+        </form>
+        <ul class="cool">
+            <li v-for="item in shopitems" style="padding-top: 15px; list-style: none; text-align: center;" :key="item.id">
+                <input type="checkbox" v-model="item.selected" @change="handleCheckboxChange(item)">
+                <input type="text" v-model="item.name" @input="updateShopItem(item)" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; background-color: #efc8f7;">
+                <button style="padding: 10px 20px; background-color: #4a73ed; color: #fff; border: none; border-radius: 4px; cursor: pointer;" @click="deleteShopItem(item)">Delete</button>
+            </li>
+        </ul>
+    </div>
+    <script>
+        // Function to scroll to a section when a button is clicked
+        function scrollToSection(sectionId) {
+            var section = document.getElementById(sectionId);
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+        new Vue({
+            el: '#app',
+            data: {
+                newShopItem: {
+                    name: '',
+                },
+                newItem: {
+                    name: '',
+                    location: '',
+                    expiryDate: ''
+                },
+                items: [],
+                shopitems: [],
+                sessionid: '',
+                expireitems: [],
+                kitchenid: '',
+                selectedKitchen: '',
+                kitchens: [],
+                searchQuery: '',
+                userid: '',
+                isOwner: false,
+                selectedItem: null,
+            },
+            async mounted() {
+                const kitchenid = localStorage.getItem('kitchenid');
+                const sessionId = localStorage.getItem('sessionid');
+                this.kitchenid = Number(kitchenid)
+                this.selectedKitchen = Number(kitchenid)
+
+                if(!sessionId){
+                    window.location.href = '/login';
+                    return
+                }
+
+                this.sessionid = sessionId
+
+                if(!kitchenid){
+                    await this.requestfirstkitchen(sessionId)
+                }
+
+                await this.checksessionid(sessionId)
+                await this.fetchKitchens();
+                await this.fetchItems();
+            },
+            methods: {
+                // Method to show the details modal and set the selected item
+                showDetails(item) {
+                    this.selectedItem = item;
+                },
+                // Method to hide the details modal
+                hideDetails() {
+                    this.selectedItem = null;
+                },
+                async fetchKitchens() {
+                    axios.put('/api/getkitchens', {sessionid: this.sessionid})
+                        .then(async response => {
+                            console.log(response.data)
+                            this.kitchens = response.data;
+                        })
+                        .catch(error => {
+                            console.error('Error fetching kitchens:', error);
+                        });
+                },
+                updateKitchen() {
+                    // Update kitchenid based on selectedKitchen value
+                    this.kitchenid = this.selectedKitchen;
+                    localStorage.setItem('kitchenid', this.selectedKitchen); 
+                    this.fetchItems()
+                },
+                getDaysInMonth(month, year) {
+                    return new Date(year, month, 0).getDate();
+                },
+                async requestfirstkitchen(sessionId) {
+                    try {
+                        const response = await axios.put(`/api/requestfirstkitchen/`, {sessionid: sessionId});
+                        if (response.data) {
+                            console.log(`response: ${response.data}`);   
+                            localStorage.setItem('kitchenid', response.data);     
+                            this.kitchenid = Number(response.data);
+                        } else {
+                            window.location.href = '/home';
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                },
+                async handleCheckboxChange(item) {
+                    try {
+                        
+                        const response = await axios.put(`/api/updateshop`, { id: item.id, selected: item.selected, name: item.name});
+                    } catch (error) {
+                        item.selected = !item.selected
+                        console.error(error);
+                    }
+                },
+                async updateShopItem(item) {
+                    try {
+                        const response = await axios.put(`/api/updateshop`, { id: item.id, selected: item.selected, name: item.name});
+                    } catch (error) {
+                        console.error(error);
+                    }
+                },
+                async checksessionid(id) {
+                    try {
+                        const response = await axios.post(`/api/checksession`, {id})
+                        if (response.data){
+                            console.log(`Logged in as ${response.data.username}`) 
+                            this.userid = response.data.id
+                            this.sessionId = id                   
+                        } else {
+                            console.log(`Not Logged in`)
+                            window.location.href = '/login';
+                        }
+                    } catch(e){
+                        console.error(e)
+                    }
+                },
+                async fetchItems() {
+                    console.log(`Fetching ${this.searchQuery}`)
+                    try {
+                        const response = await axios.post('/api/items', {kitchenid: this.kitchenid, sessionid: this.sessionid, search: this.searchQuery});
+                        this.items = response.data;
+                        console.log(this.items)
+                    } catch (error) {
+                        console.error(error);
+                    }
+                    try { 
+                        const response = await axios.post(`/api/expire`, {kitchenid: this.kitchenid, sessionid: this.sessionid});
+                        this.expireitems = response.data;
+                        console.log(this.expireitems)
+                    } catch (error) {
+                        console.error(error);
+                    }
+                    try {
+                        const response = await axios.post(`/api/shopitems`, {kitchenid: this.kitchenid, sessionid: this.sessionid});
+                        this.shopitems = response.data;
+                        console.log(this.shopitems)
+                    } catch (error) {
+                        console.error(error);
+                    }
+                },
+                async createItem() {
+                    if(this.newItem.barcodeid){
+                        const data = await axios.get(`https://world.openfoodfacts.net/api/v3/product/${this.newItem.barcodeid}`)
+                        const product = data.data.product
+                        console.log(product)
+                        await axios.post(`/api/create`, {
+                            name: `${product.product_name} - ${product.quantity}`, 
+                            location: this.newItem.location, 
+                            expiryDate: this.newItem.expiryDate, 
+                            sessionid: this.sessionid, 
+                            kitchenid: this.kitchenid,
+                            barcodeid: this.newItem.barcodeid,
+                            brand: product.brands,
+                            shop: product.stores,
+                            novagroup: product.nova_group,
+                            ingredients: product.ingredients_text,
+                            carbs: product.nutriments.carbohydrates,
+                            energy: product.nutriments.energy,
+                            fat: product.nutriments.fat,
+                            salt: product.nutriments.salt,
+                            satfat: product.nutriments['saturated-fat'],
+                            fiber: product.nutriments.fiber,
+                            proteins: product.nutriments.proteins,
+                            sodium: product.nutriments.sodium,
+                            sugars: product.nutriments.sugars,
+                            image: product.image_url
+                        });
+                        this.fetchItems(); // Refresh the list of items after creating a new one
+                        this.newItem = { name: '', location: '', expiryDate: '', barcodeid: '' }; // Reset form fields
+                    } else {
+
+                    try {
+                        await axios.post(`/api/create`, {name: this.newItem.name, location: this.newItem.location, expiryDate: this.newItem.expiryDate, sessionid: this.sessionid, kitchenid: this.kitchenid});
+                        this.fetchItems(); // Refresh the list of items after creating a new one
+                        this.newItem = { name: '', location: '', expiryDate: '', barcodeid: '' }; // Reset form fields
+                    } catch (error) {
+                        console.error(error);
+                    }
+
+                    }
+                },
+                async createShopItem() {
+                    try {
+                        await axios.post(`/api/createshop`, {name: this.newShopItem.name, sessionid: this.sessionid, kitchenid: this.kitchenid});
+                        this.fetchItems(); // Refresh the list of items after creating a new one
+                        this.newShopItem = { name: '' }; // Reset form fields
+                    } catch (error) {
+                        console.error(error);
+                    }
+                },
+                async addShopItem(item) {
+                    console.log(item)
+                    try {
+                        await axios.post(`/api/createshop`, {name: item.name, sessionid: this.sessionid, kitchenid: this.kitchenid});
+                        this.fetchItems(); // Refresh the list of items after creating a new one
+                    } catch (error) {
+                        console.error(error);
+                    }
+                },
+                async deleteItem(item) {
+                    try {
+                        if (window.confirm(`Are you sure you want to delete ${item.name}?`)) {
+                        await axios.post(`/api/deleteitem`, {sessionid: this.sessionid, kitchenid: this.kitchenid, id: item.id})}
+                        this.fetchItems(); // Refresh the list of items after deleting one
+                    } catch (error) {
+                        console.error(error);
+                    }
+                    console.log('Deleting item with ID:', itemId);
+                },
+                async deleteShopItem(item) {
+                    try {
+                        if (window.confirm(`Are you sure you want to delete ${item.name}?`)) {
+                        await axios.post(`/api/deleteshop`, {sessionid: this.sessionid, kitchenid: this.kitchenid, id: item.id})}
+                        this.fetchItems(); // Refresh the list of items after deleting one
+                    } catch (error) {
+                        console.error(error);
+                    }
+                    console.log('Deleting item with ID:', item.id);
+                },
+                async updateItem(item) {
+                    console.log('Updating item:', item);
+                    try {
+                        await axios.put(`/api/update`, {
+                            id: item.id,
+                            name: item.name,
+                            location: item.location,
+                            expiryDate: item.expiryDate, // Include expiryDate in the request body
+                            sessionid: this.sessionid,
+                            kitchenid: this.kitchenid
+                        });
+                        // Optionally, you can show a success message or perform any other action after updating the item
+                    } catch (error) {
+                        console.error(error);
+                    }
+                },
+                searchItems() {
+                    this.fetchItems(); // Trigger fetching items based on the search query
+                }
+            }
+        });
+        </script>
+</body>
+</html>

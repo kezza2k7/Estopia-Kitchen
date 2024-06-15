@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Calendar</title>
+    <!-- Include Vue.js -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <!-- Include Axios for HTTP requests -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+    body {
+        background: linear-gradient(to right, rgb(80, 80, 160), rgb(235, 127, 145));
+        font-family: "Protest Riot", sans-serif;
+    }
+    </style>
+</head>
+<body>
+    <div id="app" style="text-align: center;">
+        <h1>Food Calendar</h1>
+        <label for="kitchenSelect">Choose a kitchen:</label>
+        <select id="kitchenSelect" v-model="selectedKitchen" @change="updateKitchen">
+            <option v-for="kitchen in kitchens" :value="kitchen.id">{{ kitchen.name }}</option>
+        </select><br>
+        <button @click="createNewKitchen">Create New</button><br>
+        <button @click="yeardecrease">-</button>
+        <span>{{ yearselected }}</span>
+        <button @click="yearincrease">+</button><br><br>
+        <button @click="monthdecrease">-</button>
+        <span>{{ monthName }}</span>
+        <button @click="monthincrease">+</button><br><br>
+        <button @click="weekdecrease">-</button>
+        <span>week {{ weekselected }}</span>
+        <button @click="weekincrease">+</button>
+        <div class="calendar" id="calendar">
+            <ul>
+                <li v-for="(day, index) in calendarDays" :key="index" style="border: 6px solid #ffffff ; border-radius: 8px; margin-top: 25px; list-style: none; text-align: center;"><br>
+                    <strong>{{ day.day }} - {{ day.dayn }}</strong> - <br><br>
+                    Breakfast: <input style="background-color: transparent; border: 3px solid #ccc ; border-radius: 8px;" type="text" class="food-input" v-model="day.meals.breakfast" @input="saveMeal(day.day, day.meals)"><br><br>
+                    Lunch: <input style="background-color: transparent; border: 3px solid #ccc ; border-radius: 8px;" type="text" class="food-input" v-model="day.meals.lunch" @input="saveMeal(day.day, day.meals)"><br><br>
+                    Dinner: <input style="background-color: transparent; border: 3px solid #ccc ; border-radius: 8px;" type="text" class="food-input" v-model="day.meals.dinner" @input="saveMeal(day.day, day.meals)"><br><br>
+                    Snacks: <input style="background-color: transparent; border: 3px solid #ccc ; border-radius: 8px;" type="text" class="food-input" v-model="day.meals.snacks" @input="saveMeal(day.day, day.meals)"><br><br><br><br>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                monthNames: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+                userId: '',
+                calendarDays: [],
+                currentMeals: [],
+                sessionid: '',
+                kitchenid: '',
+                selectedKitchen: '',
+                kitchens: [],
+                weekselected: Math.floor(new Date().getDay()%7)-1,
+                monthselected: new Date().getMonth() + 1,
+                yearselected: new Date().getFullYear(),
+            },
+            computed: {
+                monthName() {
+                return this.monthNames[this.monthselected - 1];
+                }
+            },
+            async mounted() {
+                const kitchenid = localStorage.getItem('kitchenid');
+                const sessionId = localStorage.getItem('sessionid');
+                this.kitchenid = kitchenid
+                this.selectedKitchen = kitchenid
+
+                if(!sessionId){
+                    window.location.href = '/login';
+                    return
+                }
+
+                if(!kitchenid){
+                    await this.requestfirstkitchen(sessionId)
+                }
+
+                await this.checkSessionId(sessionId)
+                await this.fetchKitchens();
+            },
+            methods: {
+            createNewKitchen() {
+                // Prompt the user for text input
+                const newKitchenName = window.prompt("Enter the name of the new kitchen:");
+
+                // Check if the user entered a value
+                if (newKitchenName) {
+                    // Handle the creation of the new kitchen here
+                    console.log("New kitchen name:", newKitchenName);
+                    axios.put('/api/makekitchen', {sessionid: this.sessionid, kitchenname: newKitchenName})
+                    .then(response => {
+                        console.log(response.data)
+                        this.fetchKitchens
+                    })
+                    .catch(error => {
+                        console.error('Error fetching kitchens:', error);
+                    });
+                } else {
+                    // Handle the case where the user canceled the input
+                    console.log("Input canceled");
+                }
+            },
+            fetchKitchens() {
+                axios.put('/api/getkitchens', {sessionid: this.sessionid})
+                    .then(response => {
+                        console.log(response.data)
+                        this.kitchens = response.data;
+                    })
+                    .catch(error => {
+                        console.error('Error fetching kitchens:', error);
+                    });
+            },
+            updateKitchen() {
+                // Update kitchenid based on selectedKitchen value
+                this.kitchenid = this.selectedKitchen;
+                localStorage.setItem('kitchenid', this.selectedKitchen);     
+                this.generateFoodCalendar()
+            },
+            getDaysInMonth(month, year) {
+                return new Date(year, month, 0).getDate();
+            },
+            async requestfirstkitchen(sessionId) {
+                try {
+                    const response = await axios.put(`/api/requestfirstkitchen/`, {sessionid: sessionId});
+                    if (response.data) {
+                        console.log(`response: ${response.data}`);   
+                        localStorage.setItem('kitchenid', response.data);     
+                        this.kitchenid = response.data
+                    } else {
+                        window.location.href = '/home';
+                    }
+                } catch (error) {
+                    console.error(error);
+                }
+            },
+            async getDayOfWeeke(day, month, year) {
+                const date = new Date(year, month - 1, day); // Month is zero-based in JavaScript Date object
+                const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                const dayOfWeekIndex = date.getDay(); // Returns 0 for Sunday, 1 for Monday, ..., 6 for Saturday
+                return daysOfWeek[dayOfWeekIndex];
+            },
+            async generateFoodCalendar() {
+                console.log("Making Food Cal")
+                await this.fetchMealsByMonth(this.monthselected, this.yearselected);
+                const startOfWeek = this.weekselected*7-6
+                const endOfWeek = this.weekselected*7
+                this.calendarDays = []
+                
+                for (let day = startOfWeek; day <= endOfWeek; day++) {
+                    const mealData = this.currentMeals.find(meal => meal.day === day);
+                    const date = new Date(this.yearselected, this.monthselected - 1, day); // Month is zero-based in JavaScript Date object
+                    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    const dayOfWeekIndex = date.getDay(); // Returns 0 for Sunday, 1 for Monday, ..., 6 for Saturday
+                    const dayofweek = daysOfWeek[dayOfWeekIndex]
+                    this.calendarDays.push({
+                        day: day,
+                        meals: mealData ? mealData : { breakfast: '', lunch: '', dinner: '', snacks: ''},
+                        dayn: dayofweek
+                    });
+                }
+            },
+            getDaysInWeek(startOfWeek, endOfWeek) {
+                const daysInWeek = [];
+                let currentDate = new Date(startOfWeek);
+                while (currentDate <= endOfWeek) {
+                    daysInWeek.push(new Date(currentDate));
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+                return daysInWeek;
+            },
+            async checkSessionId(sessionId) {
+                try {
+                    this.sessionid = sessionId
+                    const response = await axios.post(`/api/checksession`, {id: sessionId});
+                    if (response.data) {
+                        this.userId = response.data.id; // Set userId from the response
+                        console.log(`UserID: ${this.userId}`);
+                        this.generateFoodCalendar()
+                    } else {
+                        console.log(`Not Logged in`);
+                        window.location.href = '/login';
+                    }
+                } catch (error) {
+                    console.error(error);
+                }
+            },
+            async saveMeal(day, meals) {
+                try {
+                    // Make PUT request to update meals for a specific date
+                    await axios.put(`/api/editmeals`, { sessionid: this.sessionid, meals, day: day, month: this.monthselected, year: this.yearselected, kitchenid: this.kitchenid});
+                    console.log('Meal data saved for day:', day);
+                } catch (error) {
+                    console.error(error);
+                }
+            },
+            async fetchMealsByMonth(month, year) {
+            try {
+                // Make API request to fetch meals for the specified month and year
+                const response = await axios.put(`/api/meals/`, {month: month, year:year, sessionid:this.sessionid, kitchenid: this.kitchenid});
+                console.log(response)
+                // Set currentMeals data
+                this.currentMeals = response.data;
+
+            } catch (error) {
+                console.error('Error fetching meals by month:', error);
+            }
+            },
+            async weekincrease() {
+                if (this.weekselected < 5) {
+                    await this.weekselected++;
+                    await this.generateFoodCalendar()
+                }
+
+            },
+            async weekdecrease() {
+                if (this.weekselected > 1) {
+                    await this.weekselected--;
+                    await this.generateFoodCalendar()
+                }
+            },
+            async monthincrease() {
+                if (this.monthselected < 12) {
+                    await this.monthselected++;
+                    await this.generateFoodCalendar()
+                }
+            },
+            async monthdecrease() {
+                if (this.monthselected > 1) {
+                    await this.monthselected--;
+                    await this.generateFoodCalendar()
+                }
+            },
+            async yearincrease() {
+                await this.yearselected++;
+                await this.generateFoodCalendar()
+            },
+            async yeardecrease() {
+                if (this.yearselected > 0) {
+                    await this.yearselected--;
+                    await this.generateFoodCalendar()
+                }
+            }
+            }
+        });
+    </script>
+</body>
+</html>

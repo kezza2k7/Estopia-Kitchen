@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Item Management</title>
+   <style>
+    body {
+        background: linear-gradient(to right, lightblue, lightpink);
+        font-family: "Protest Riot", sans-serif;
+    }
+
+   </style>
+    <!-- Include Vue.js -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <!-- Include Axios for HTTP requests -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha384-GLhlTQ8iUNnJTmP0+ukxl9ZB8Fq8a4QomLAfN2l3Lg77qvy4V07k1jX2P5U2nMb" crossorigin="anonymous">
+</head>
+<body>
+    <div id="app">
+        <h1>Delete Your Account</h1>
+        <h2>Make sure your logged into your account on https://food.estopia.net before deleting your account!</h2>
+        <!-- Delete you account -->
+        <button style="padding: 10px 20px; background-color: #4a73ed; color: #fff; border: none; border-radius: 4px; cursor: pointer;" @click="deleteAccount()">Delete Account</button>
+
+    </div>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                sessionid: '',
+            },
+            async mounted() {
+                const sessionId = localStorage.getItem('sessionid');
+
+                if(!sessionId){
+                    console.log(sessionId)
+                    console.log('No session id found')
+                    return;
+                }
+
+                this.sessionid = sessionId
+
+                await this.checksessionid(sessionId)
+            },
+            methods: {
+                async checksessionid(id) {
+                    try {
+                        const response = await axios.post(`/api/checksession`, {id})
+                        if (response.data){
+                            console.log(`Logged in as ${response.data.username}`) 
+                            this.userid = response.data.id
+                            this.sessionId = id                   
+                        } else {
+                            console.log(`Not Logged in`)
+                            window.location.href = '/login';
+                        }
+                    } catch(e){
+                        console.error(e)
+                    }
+                },
+                async deleteAccount() {
+                    try {
+                        const response = await axios.post(`/api/deleteaccount`, {sessionid: this.sessionid})
+                        console.log(response.data.message)
+                        localStorage.removeItem('sessionid')
+                        window.location.href = '/login';
+                    } catch(e){
+                        console.error(e)
+                    }
+                }
+            }
+        });
+        </script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+    <!-- Include Vue.js -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <!-- Include Axios for HTTP requests -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <div id="app">
+    </div>
+
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                inviteCode: '', // The invite code from the URL
+            },
+            mounted() {
+                // Extract the invite code from the URL
+                this.inviteCode = window.location.pathname.split('/invites/')[1];
+    
+                // Get the session ID from localStorage
+                const sessionid = localStorage.getItem('sessionid');
+    
+                // Make a request to the server with the sessionid and invite code
+                this.sendInviteRequest(sessionid, this.inviteCode);
+            },
+            methods: {
+                async sendInviteRequest(sessionid, inviteCode) {
+                    try {
+                        // Make a GET request to your server with the sessionid and invite code
+                        const response = await axios.post(`/api/invite`, { code: inviteCode, sessionid: sessionid });
+    
+                        // Handle the response as needed
+                        console.log(response.data.message);
+                    } catch (error) {
+                        // Handle errors
+                        console.error(error.response.data.error);
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
