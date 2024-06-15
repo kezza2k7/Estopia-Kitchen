@@ -11,7 +11,7 @@ Welcome to the Estopia Kitchen App! This is a simple application designed to hel
 ## Hosting the Backend
 
 1. Clone the repository: `git clone https://github.com/kezza2k7/kitchen-app.git`
-2. CD into the repository 'cd kitchen-app/Backend'
+2. CD into the repository `cd kitchen-app/Backend`
 3. Install the required dependencies: `npm install`
 4. Start the application: `npm start`
 
