@@ -24,7 +24,3 @@ Welcome to the Estopia Kitchen App! This is a simple application designed to hel
 ## Contributing
 
 Contributions are welcome! If you have any ideas, bug reports, or feature requests, please open an issue or submit a pull request.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
